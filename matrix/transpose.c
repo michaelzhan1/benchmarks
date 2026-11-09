@@ -44,8 +44,8 @@ static int parse_positive_int(const char* text, int* value) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <tile_size>\n", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <tile_size> <repetitions>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -53,6 +53,12 @@ int main(int argc, char** argv) {
     if (parse_positive_int(argv[1], &tile_size) != 0 || tile_size < 1 ||
         tile_size > min(ROWS, COLS)) {
         fprintf(stderr, "Invalid tile size: %s\n", argv[1]);
+        return EXIT_FAILURE;
+    }
+
+    int repetitions;
+    if (parse_positive_int(argv[2], &repetitions) != 0 || repetitions < 1) {
+        fprintf(stderr, "Invalid repetitions: %s\n", argv[2]);
         return EXIT_FAILURE;
     }
 
@@ -69,38 +75,43 @@ int main(int argc, char** argv) {
         mat[i] = (float)i;
     }
 
-    clock_t start = clock();
-    if (start == (clock_t)-1) {
-        fprintf(stderr, "Failed to get start time\n");
-        free(mat);
-        free(dst);
-        return EXIT_FAILURE;
-    }
+    double total_us = 0;
+    for (int r = 0; r < repetitions; ++r) {
+        clock_t start = clock();
+        if (start == (clock_t)-1) {
+            fprintf(stderr, "Failed to get start time\n");
+            free(mat);
+            free(dst);
+            return EXIT_FAILURE;
+        }
 
-    int result = transpose(mat, dst, ROWS, COLS, tile_size, tile_size);
+        int result = transpose(mat, dst, ROWS, COLS, tile_size, tile_size);
 
-    clock_t end = clock();
-    if (result != 0 || end == (clock_t)-1) {
-        fprintf(stderr, "Failed to get end time\n");
-        free(mat);
-        free(dst);
-        return EXIT_FAILURE;
-    }
+        clock_t end = clock();
+        if (result != 0 || end == (clock_t)-1) {
+            fprintf(stderr, "Failed to get end time\n");
+            free(mat);
+            free(dst);
+            return EXIT_FAILURE;
+        }
 
-    for (int i = 0; i < ROWS; ++i) {
-        for (int j = 0; j < COLS; ++j) {
-            if (dst[j * ROWS + i] != mat[i * COLS + j]) {
-                fprintf(stderr, "Transpose verification failed at (%d, %d)\n",
-                        i, j);
-                free(mat);
-                free(dst);
-                return EXIT_FAILURE;
+        for (int i = 0; i < ROWS; ++i) {
+            for (int j = 0; j < COLS; ++j) {
+                if (dst[j * ROWS + i] != mat[i * COLS + j]) {
+                    fprintf(stderr, "Transpose verification failed at (%d, %d)\n",
+                            i, j);
+                    free(mat);
+                    free(dst);
+                    return EXIT_FAILURE;
+                }
             }
         }
+
+        total_us += (double)(end - start);
     }
 
-    double elapsed_us = (double)(end - start);
-    printf("%dx%d: %d us\n", tile_size, tile_size, (int)elapsed_us);
+    double avg_us = total_us / repetitions;
+    printf("%dx%d: %d us\n", tile_size, tile_size, (int)avg_us);
 
     free(mat);
     free(dst);
