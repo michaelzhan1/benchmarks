@@ -131,7 +131,9 @@ int main(int argc, char** argv) {
     }
 
     double avg_us = total_us / repetitions;
-    printf("%dx%d: %d us\n", tile_size, tile_size, (int)avg_us);
+    char tile_label[sizeof("2048x2048:")];
+    snprintf(tile_label, sizeof(tile_label), "%dx%d:", tile_size, tile_size);
+    printf("%10s %10d us\n", tile_label, (int)avg_us);
 
     free(mat);
     free(dst);
