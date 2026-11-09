@@ -2,6 +2,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "../common/math.h"
@@ -9,6 +10,9 @@
 #define ROWS 2048
 #define COLS 2048
 #define TOTAL_SIZE (ROWS * COLS)
+
+// m4 mac
+#define CACHE_LINE_SIZE 128
 
 int transpose(float* mat, float* dst, int rows, int cols, int rowTile,
               int colTile) {
@@ -62,8 +66,24 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    float* mat = malloc(TOTAL_SIZE * sizeof(float));
-    float* dst = malloc(TOTAL_SIZE * sizeof(float));
+    size_t bytes = TOTAL_SIZE * sizeof(float);
+    void* mat_mem = NULL;
+    void* dst_mem = NULL;
+    
+    int err = posix_memalign(&mat_mem, CACHE_LINE_SIZE, bytes);
+    if (err != 0) {
+        fprintf(stderr, "Memory allocation failed for mat: %s\n", strerror(err));
+        return EXIT_FAILURE;
+    }
+    err = posix_memalign(&dst_mem, CACHE_LINE_SIZE, bytes);
+    if (err != 0) {
+        fprintf(stderr, "Memory allocation failed for dst: %s\n", strerror(err));
+        free(mat_mem);
+        return EXIT_FAILURE;
+    }
+
+    float* mat = mat_mem;
+    float* dst = dst_mem;
     if (mat == NULL || dst == NULL) {
         fprintf(stderr, "Memory allocation failed\n");
         free(mat);
